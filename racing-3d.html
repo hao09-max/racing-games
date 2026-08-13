@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>3D赛车</title>
+<style>
+body{background:#111;color:#fff;text-align:center;padding:10px;font-family:Arial;margin:0}
+canvas{display:block;margin:10px auto;background:#000;border-radius:10px}
+button{background:#e07a5f;border:none;color:#fff;padding:15px 25px;border-radius:20px;font-size:1.2rem;margin:5px}
+#score{font-size:1.5rem;margin:10px}
+</style>
+</head>
+<body>
+<h1>🏁 极速3D</h1>
+<div id="score">得分：0</div>
+<canvas id="game" width="320" height="480"></canvas>
+<br>
+<button id="left">⬅️</button>
+<button id="right">➡️</button>
+<button onclick="startGame()">开始</button>
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const W=320,H=480;
+let playerX=0, obstacles=[], trees=[], score=0, gameOver=true, speed=2, roadOffset=0;
+let audioCtx;
+function sound(freq,dur){
+if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+o.type='sine';o.frequency.value=freq;g.gain.value=0.2;
+o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+dur);
+}
+function startGame(){
+gameOver=false;score=0;obstacles=[];trees=[];playerX=0;speed=2;roadOffset=0;updateScore();draw();requestAnimationFrame(loop);
+}
+function draw(){
+ctx.clearRect(0,0,W,H);
+// 天空
+ctx.fillStyle='#0a0a2a';ctx.fillRect(0,0,W,H);
+// 草地
+ctx.fillStyle='#1a5c1a';ctx.fillRect(0,H/2,W,H/2);
+// 道路（透视）
+ctx.fillStyle='#333';
+ctx.beginPath();ctx.moveTo(W/2-40,H);ctx.lineTo(W/2-20,H/2);ctx.lineTo(W/2+20,H/2);ctx.lineTo(W/2+40,H);ctx.fill();
+// 路肩
+ctx.fillStyle='#f00';
+ctx.beginPath();ctx.moveTo(W/2-45,H);ctx.lineTo(W/2-22,H/2);ctx.lineTo(W/2-20,H/2);ctx.lineTo(W/2-40,H);ctx.fill();
+ctx.beginPath();ctx.moveTo(W/2+45,H);ctx.lineTo(W/2+22,H/2);ctx.lineTo(W/2+20,H/2);ctx.lineTo(W/2+40,H);ctx.fill();
+// 中心虚线
+ctx.strokeStyle='#fff';ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(W/2,H);ctx.lineTo(W/2,H/2);ctx.stroke();ctx.setLineDash([]);
+// 障碍车
+ctx.fillStyle='#00f';
+for(let obs of obstacles){
+const scale=obs.z/100;
+const x=W/2+obs.x*scale;
+const y=H/2+obs.y*scale;
+const w=30*scale,h=50*scale;
+ctx.fillRect(x-w/2,y-h,w,h);
+ctx.fillStyle='#fff';ctx.fillRect(x-w/4,y-h*0.8,w/4,h/4);
+ctx.fillStyle='#00f';
+}
+// 树
+ctx.fillStyle='#0a3a0a';
+for(let t of trees){
+const scale=t.z/100;
+const x=W/2+t.x*scale;
+const y=H/2+t.y*scale;
+ctx.fillRect(x-2*scale,y-10*scale,4*scale,10*scale);
+ctx.beginPath();ctx.arc(x,y-15*scale,8*scale,0,Math.PI*2);ctx.fillStyle='#1a8a1a';ctx.fill();
+ctx.fillStyle='#0a3a0a';
+}
+// 玩家车
+ctx.fillStyle='#f00';ctx.fillRect(W/2+playerX-15,H-80,30,50);
+ctx.fillStyle='#fff';ctx.fillRect(W/2+playerX-10,H-70,5,10);ctx.fillRect(W/2+playerX+5,H-70,5,10);
+if(gameOver){ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.font='30px Arial';ctx.textAlign='center';ctx.fillText('游戏结束',W/2,H/2);ctx.font='20px Arial';ctx.fillText('点击开始',W/2,H/2+40);}
+}
+function loop(){
+if(gameOver)return;
+roadOffset+=speed;
+if(Math.random()<0.03){obstacles.push({x:(Math.random()-0.5)*100,z:10,y:0});}
+if(Math.random()<0.05){trees.push({x:(Math.random()-0.5)*200,z:10,y:Math.random()*200});}
+for(let obs of obstacles){obs.z+=speed;obs.y+=speed;if(obs.y>H){obstacles.shift();score++;sound(600,0.05);updateScore();}
+if(obs.y>H-120&&obs.y<H-60&&Math.abs(obs.x-playerX)<20){gameOver=true;sound(200,0.5);draw();return;}
+}
+for(let t of trees){t.z+=speed;t.y+=speed;if(t.y>H)trees.shift();}
+draw();speed+=0.005;requestAnimationFrame(loop);
+}
+function updateScore(){document.getElementById('score').textContent='得分：'+score;}
+document.getElementById('left').addEventListener('click',()=>{playerX=Math.max(-60,playerX-15);if(!gameOver)draw();});
+document.getElementById('right').addEventListener('click',()=>{playerX=Math.min(60,playerX+15);if(!gameOver)draw();});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')playerX=Math.max(-60,playerX-15);if(e.key==='ArrowRight')playerX=Math.min(60,playerX+15);if(!gameOver)draw();});
+draw();
+</script>
+</body>
+</html>
